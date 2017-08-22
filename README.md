@@ -1,16 +1,20 @@
 # oppo_decrypt
-* Oppo/Oneplus .ops Firmware decrypter
+Oppo/Oneplus .ops Firmware decrypter
+------------------------------------
 
 Tested with "MSMDownloadTool V4.0" for Oneplus 5, Frida 10.4 and Windoze
-------------------------------------------------------------------------
 
-backdoor.py : Enables hidden "readback" functionality
-decrypt.py  : Decrypts any part of the firmware
+* backdoor.py : Enables hidden "readback" functionality
+* decrypt.py  : Decrypts any part of the firmware
 
 Based on Frida.re and python 3.6
-To use, install frida : "pip install frida"
+
+Installation:
+-------------
+"pip install frida"
 
 Windows only, sorry folks !
 
-License: 
+License:
+-------- 
 Share, modify and use as you like, but refer the original author !
