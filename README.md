@@ -11,9 +11,17 @@ Based on Frida.re and python 3.6
 
 Installation:
 -------------
-"pip install frida"
+'pip install frida'
 
 Windows only, sorry folks !
+
+Usage:
+-------- 
+* Oneplus 5 QD-Loader decryption:
+'python decrypt.py "MsmDownloadTool V4.0.exe" 0 0x92880'
+
+* Enable readback mode:
+'python backdoor.py "MsmDownloadTool V4.0.exe"'
 
 License:
 -------- 
