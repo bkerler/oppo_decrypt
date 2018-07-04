@@ -94,15 +94,16 @@ def main(target_process, start, length):
                             // When function is called, print out its parameters
                             onEnter: function (args) {
                                 console.log('');
-                                console.log('[+] Length: ' + args[0]);
-                                console.log('[+] EDI: ' + Memory.readU32(this.context.edi).toString(16)); // Plaintext
+                                console.log('[+] AES-Length: ' + args[0]);
+                                console.log('[+] AES-EDX: ' + Memory.readU32(this.context.edx).toString(16)); // Plaintext
                                 this.length=args[0].toInt32();
+                                this.xx=this.context.edx;
                             },
 
                             // When function is finished
                             onLeave: function (retval) {
-                                dumpAddr('Data', this.context.edi, 16); // Print out data array, which will contain de/encrypted data as output
-                                dt=Memory.readByteArray(this.context.edi,this.length);
+                                dumpAddr('Data', this.xx, 16); // Print out data array, which will contain de/encrypted data as output
+                                dt=Memory.readByteArray(this.xx,this.length);
                                 send('Output',dt);
                                 console.log("Writing data.");
                             }
