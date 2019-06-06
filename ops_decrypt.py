@@ -170,6 +170,4 @@ if __name__ == '__main__':
         target_process = int(sys.argv[1])
     except ValueError:
         target_process = sys.argv[1]
-    start=int(sys.argv[2],16)
-    length=int(sys.argv[3],16)
     main(target_process, start, length)
