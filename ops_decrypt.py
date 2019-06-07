@@ -16,7 +16,7 @@ def on_message(message, data):
     else:
         print("[%s] => %s" % (message, data))
 
-def main(target_process, start, length):
+def main(target_process):
     pid = frida.spawn([target_process])
     session = frida.attach(pid)
     script = session.create_script("""
@@ -26,9 +26,7 @@ def main(target_process, start, length):
     
     var op = recv('param', function(value) {
                 var v = value.payload.split(",");
-                seekoffset = v[0];
-                seeklength = v[1];
-                processname = v[2];
+                processname = v[0];
                 run();
                 });
 
@@ -154,7 +152,7 @@ def main(target_process, start, length):
 """)
     script.on('message', on_message)
     script.load()
-    script.post({'type': 'param', 'payload': str(start)+","+str(length)+","+str(target_process)})
+    script.post({'type': 'param', 'payload': str(target_process)})
     frida.resume(pid)
     print("[!] Ctrl+C on Windows/cmd.exe to detach from instrumented program.\n\n")
     sys.stdin.read()
@@ -170,4 +168,4 @@ if __name__ == '__main__':
         target_process = int(sys.argv[1])
     except ValueError:
         target_process = sys.argv[1]
-    main(target_process, start, length)
+    main(target_process)
