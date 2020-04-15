@@ -1,29 +1,34 @@
 # oppo_decrypt
-Oppo/Oneplus .ops Firmware decrypter
+Oppo .ops Firmware decrypter
 ------------------------------------
-
-Tested with "MSMDownloadTool V4.0" for Oneplus 5/6, Frida >10.4 and Windoze
+Works for oppo only, not oneplus !
 
 * backdoor.py : Enables hidden "readback" functionality
-* ops_decrypt.py  : Decrypts any part of the firmware with .ops extension, needs "MsmDownload Tool" and frida
+* ops_extract.py  : Decrypts any part of the firmware with .ops extension
 * ofp_decrypt.py  : Decrypts any part of the firmware with .ofp extension
 
 
-Based on Frida.re and python 3.6
+Based on python 3.x
 
 Installation:
 -------------
-'pip install frida'
+pip3 install pycrypto
 
-Windows only, sorry folks !
+
+Both Linux and Windows now, folks !
 
 Usage:
 -------- 
-* Oneplus 5 QD-Loader decryption:
-'python decrypt.py "MsmDownloadTool V4.0.exe" 0 0x92880'
+* Enable readback mode (use admin command prompt under windoze):
+```
+python3 backdoor.py "MsmDownloadTool V4.0.exe"'
+```
 
-* Enable readback mode:
-'python backdoor.py "MsmDownloadTool V4.0.exe"'
+* Extract ops file:
+
+```
+python3 ops_extract.py [myops.ops]
+```
 
 License:
 -------- 
