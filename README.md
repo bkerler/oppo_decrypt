@@ -4,8 +4,7 @@ Oppo .ops Firmware decrypter
 Works for oppo only, not oneplus !
 
 * backdoor.py : Enables hidden "readback" functionality
-* ops_extract.py  : Decrypts any part of the firmware with .ops extension
-* ofp_decrypt.py  : Decrypts any part of the firmware with .ofp extension
+* ofp_extract.py  : Decrypts any part of the firmware with .ofp extension
 
 
 Based on python 3.x
@@ -24,10 +23,10 @@ Usage:
 python3 backdoor.py "MsmDownloadTool V4.0.exe"'
 ```
 
-* Extract ops file:
+* Extract ofp file:
 
 ```
-python3 ops_extract.py [myops.ops]
+python3 ofp_extract.py [myops.ofp]
 ```
 
 License:
