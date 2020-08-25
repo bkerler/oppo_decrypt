@@ -1,5 +1,5 @@
 # oppo_decrypt
-Oppo .ops Firmware decrypter
+Oppo .ofp Firmware decrypter
 ------------------------------------
 Works for oppo only, not oneplus !
 
