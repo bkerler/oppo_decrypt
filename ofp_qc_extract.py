@@ -115,7 +115,8 @@ def extract_xml(filename,key,iv):
         rf.seek(xmloffset+0x14)
         offset=unpack("<I",rf.read(4))[0]*pagesize
         length=unpack("<I",rf.read(4))[0]
-
+        if length<200: #A57 hack
+            length=xmloffset-offset-0x57
         rf.seek(offset)
         data=rf.read(length)
         dec=aes_cfb(data,key,iv)
@@ -225,7 +226,7 @@ def main():
                         continue
                     length = int(item.attrib["SizeInByteInSrc"])
                     decryptfile(key,iv,filename, path, wfilename, start, length,length)
-        elif child.tag in ["AllFile","Data1","Data2"]:
+        elif child.tag in ["AllFile","Data","Data1","Data2"]:
             # if not os.path.exists(os.path.join(path, child.tag)):
             #    os.mkdir(os.path.join(path, child.tag))
             # spath = os.path.join(path, child.tag)
