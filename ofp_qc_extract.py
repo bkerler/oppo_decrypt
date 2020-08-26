@@ -151,6 +151,9 @@ def copysub(rf,wf,start,length):
 
 def decryptfile(key,iv,filename,path,wfilename,start,length,rlength,decryptsize=0x40000):
     print(f"Extracting {wfilename}")
+    if rlength==length:
+        length=(length//0x4*0x4)
+
     with open(filename, 'rb') as rf:
         with open(os.path.join(path, wfilename), 'wb') as wf:
             rf.seek(start)
@@ -171,20 +174,20 @@ def decryptfile(key,iv,filename,path,wfilename,start,length,rlength,decryptsize=
                 wf.write(outp[:rlength])
 
 def main():
-    if len(sys.argv)<2:
-        print("Usage: ./ofp_libextract.py [Filename.ofp]")
+    if len(sys.argv)<3:
+        print("Usage: ./ofp_qc_extract.py [Filename.ofp] [Directory to extract files to]")
         exit(0)
 
     filename=sys.argv[1]
-    filesize=os.stat(filename).st_size
-
+    outdir=sys.argv[2]
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
     #key,iv=generatekey1()
     pagesize,key,iv,data=generatekey2(filename)
     if pagesize==0:
         print("Unknown key. Aborting")
         exit(0)
     else:
-        #print(data.decode('utf-8'))
         xml=data[:data.rfind(b">")+1].decode('utf-8')
 
     if "/" in filename:
@@ -194,7 +197,7 @@ def main():
     else:
         path = ""
 
-    path = os.path.join(path,"extract")
+    path = os.path.join(path,outdir)
 
     if os.path.exists(path):
         shutil.rmtree(path)
@@ -216,9 +219,28 @@ def main():
             for item in child:
                 if item.tag == "config":
                     wfilename = item.attrib["filename"]
-                    start = int(item.attrib["SizeInSectorInSrc"]) * pagesize
+                    if "SizeInSectorInSrc" in item.attrib:
+                        start = int(item.attrib["SizeInSectorInSrc"]) * pagesize
+                    else:
+                        continue
                     length = int(item.attrib["SizeInByteInSrc"])
                     decryptfile(key,iv,filename, path, wfilename, start, length,length)
+        elif child.tag in ["AllFile","Data1","Data2"]:
+            # if not os.path.exists(os.path.join(path, child.tag)):
+            #    os.mkdir(os.path.join(path, child.tag))
+            # spath = os.path.join(path, child.tag)
+            for item in child:
+                if "filename" in item.attrib:
+                    wfilename = item.attrib["filename"]
+                    if wfilename == "":
+                        continue
+                    start = int(item.attrib["FileOffsetInSrc"])
+                    rlength = int(item.attrib["SizeInByteInSrc"])
+                    if "SizeInSectorInSrc" in item.attrib:
+                        length = int(item.attrib["SizeInSectorInSrc"]) * pagesize
+                    else:
+                        length=rlength
+                    decryptfile(key,iv,filename, path, wfilename, start, length,rlength)
         elif "Program" in child.tag:
             # if not os.path.exists(os.path.join(path, child.tag)):
             #    os.mkdir(os.path.join(path, child.tag))
@@ -229,8 +251,11 @@ def main():
                     if wfilename == "":
                         continue
                     start = int(item.attrib["FileOffsetInSrc"]) * pagesize
-                    length = int(item.attrib["SizeInSectorInSrc"]) * pagesize
                     rlength = int(item.attrib["SizeInByteInSrc"])
+                    if "SizeInSectorInSrc" in item.attrib:
+                        length = int(item.attrib["SizeInSectorInSrc"]) * pagesize
+                    else:
+                        length=rlength
                     decryptfile(key,iv,filename, path, wfilename, start, length,rlength)
                 else:
                     for subitem in item:
