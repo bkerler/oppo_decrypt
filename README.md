@@ -11,7 +11,7 @@ Based on python 3.x
 
 Installation:
 -------------
-pip3 install pycrypto
+pip3 install -r requirements.txt
 
 
 Both Linux and Windows now, folks !
