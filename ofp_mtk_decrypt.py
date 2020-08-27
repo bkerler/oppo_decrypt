@@ -131,8 +131,10 @@ def main(filename,outdir):
                 if enclength>0:
                     rf.seek(start)
                     encdata=rf.read(enclength)
+                    if enclength%16!=0:
+                        encdata+=b"\x00"*(16-(enclength%16))
                     data=aes_cfb(aeskey,aesiv,encdata,True)
-                    wb.write(data)
+                    wb.write(data[:enclength])
                     length-=enclength
                 while length>0:
                     size=0x200000
