@@ -73,16 +73,27 @@ keytables=[
 
         ["122D57E92A518AFF5E3C786B7C34E189",
          "DD6DF2D9543785674522717219989FB0",
-         "12698965A132C76136CC88C5DD94EE91"]
+         "12698965A132C76136CC88C5DD94EE91"],
+
+        [
+            "ab3f76d7989207f2",  #AES KEY
+            "2bf515b3a9737835"   #AES IV
+        ]
+
+        
 ]
 
 def getkey(index):
     kt=keytables[index]
-    obskey=bytearray(unhexlify(kt[0]))
-    encaeskey=bytearray(unhexlify(kt[1]))
-    encaesiv=bytearray(unhexlify(kt[2]))
-    aeskey=hexlify(hashlib.md5(mtk_shuffle2(obskey,16,encaeskey,16)).digest())[:16]
-    aesiv=hexlify(hashlib.md5(mtk_shuffle2(obskey, 16, encaesiv, 16)).digest())[:16]
+    if len(kt) == 3 :
+        obskey=bytearray(unhexlify(kt[0]))
+        encaeskey=bytearray(unhexlify(kt[1]))
+        encaesiv=bytearray(unhexlify(kt[2]))
+        aeskey=hexlify(hashlib.md5(mtk_shuffle2(obskey,16,encaeskey,16)).digest())[:16]
+        aesiv=hexlify(hashlib.md5(mtk_shuffle2(obskey, 16, encaesiv, 16)).digest())[:16]
+    else:
+        aeskey = kt[0]
+        aesiv = kt[1]
     return aeskey, aesiv
 
 def brutekey(rf):
