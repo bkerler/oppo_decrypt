@@ -92,8 +92,9 @@ def getkey(index):
         aeskey=hexlify(hashlib.md5(mtk_shuffle2(obskey,16,encaeskey,16)).digest())[:16]
         aesiv=hexlify(hashlib.md5(mtk_shuffle2(obskey, 16, encaesiv, 16)).digest())[:16]
     else:
-        aeskey = kt[0]
-        aesiv = kt[1]
+        aeskey = bytes(kt[0],'utf-8')
+        aesiv =  bytes(kt[1],'utf-8')
+        print(aeskey,aesiv)
     return aeskey, aesiv
 
 def brutekey(rf):
