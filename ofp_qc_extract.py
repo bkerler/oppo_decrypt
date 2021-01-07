@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-# (c) B.Kerler, MIT license
+# (c) B.Kerler 2018-2021, MIT license
 import os
 import sys
 import xml.etree.ElementTree as ET
+import zipfile
 from struct import unpack
 from binascii import unhexlify, hexlify
 from Crypto.Cipher import AES
@@ -183,6 +184,22 @@ def main():
     outdir=sys.argv[2]
     if not os.path.exists(outdir):
         os.mkdir(outdir)
+
+    pk=False
+    with open(filename,"rb") as rf:
+        if rf.read(2)==b"PK":
+            pk=True
+
+    if pk==True:
+        print("Zip file detected, trying to decrypt files")
+        zippw=bytes("flash@realme$50E7F7D847732396F1582CD62DD385ED7ABB0897", 'utf-8')
+        with zipfile.ZipFile(filename) as file:
+            for zfile in file.namelist():
+                print("Extracting "+zfile+" to "+outdir)
+                file.extract(zfile,pwd=zippw,path=outdir)
+            print("Files extracted to "+outdir)
+            exit(0)
+
     #key,iv=generatekey1()
     pagesize,key,iv,data=generatekey2(filename)
     if pagesize==0:
