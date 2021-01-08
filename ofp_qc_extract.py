@@ -154,7 +154,10 @@ def copysub(rf,wf,start,length):
 def decryptfile(key,iv,filename,path,wfilename,start,length,rlength,decryptsize=0x40000):
     print(f"Extracting {wfilename}")
     if rlength==length:
+        tlen=length
         length=(length//0x4*0x4)
+        if tlen%0x4!=0:
+            length+=0x4
 
     with open(filename, 'rb') as rf:
         with open(os.path.join(path, wfilename), 'wb') as wf:
