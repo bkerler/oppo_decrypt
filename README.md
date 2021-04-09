@@ -3,7 +3,7 @@ Oppo .ofp Firmware decrypter
 ------------------------------------
 
 * ofp_qc_extract.py  : Decrypts oppo qc chipset based firmware with .ofp extension
-* ofp_mtk_extract.py  : Decrypts oppo mtk chipset based firmware with .ofp extension
+* ofp_mtk_decrypt.py  : Decrypts oppo mtk chipset based firmware with .ofp extension
 * backdoor.py : Enables hidden "readback" functionality
 
 
@@ -22,7 +22,7 @@ Usage:
 
 ```
 python3 ofp_qc_extract.py [myops.ofp] [directory to extract]
-python3 ofp_mtk_extract.py [myops.ofp] [directory to extract]
+python3 ofp_mtk_decrypt.py [myops.ofp] [directory to extract]
 ```
 
 * Enable readback mode (use admin command prompt under windoze):
