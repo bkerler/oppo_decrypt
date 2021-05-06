@@ -46,16 +46,30 @@ def generatekey1():
     iv = bytes(hashlib.md5(key1).hexdigest()[0:16], 'utf-8')
     return aeskey,iv
 
+def bytestolow(data):
+    h = MD5.new()
+    h.update(data)
+    shash = h.digest()
+    return hexlify(shash).lower()[0:16]
+
+def deobfuscate(data,mask):
+    ret=bytearray()
+    for i in range(0, len(data)):
+        v = ROL((data[i] ^ mask[i]), 4, 8)
+        ret.append(v)
+    return ret
+
 def generatekey2(filename):
     keys = [
+                # a3s
+                ["V1.6.17", "E11AA7BB558A436A8375FD15DDD4651F", "77DDF6A0696841F6B74782C097835169",
+                 "A739742384A44E8BA45207AD5C3700EA"],
                 #R9s/A57t
                 ["V1.4.17/1.4.27",                          "27827963787265EF89D126B69A495A21","82C50203285A2CE7D8C3E198383CE94C","422DD5399181E223813CD8ECDF2E4D72"],
                 ["V1.5.13",                                 "67657963787565E837D226B69A495D21","F6C50203515A2CE7D8C3E1F938B7E94C","42F2D5399137E2B2813CD8ECDF2F4D72"],
                 #R15 Pro CPH1831 V1.6.6 / FindX CPH1871 V1.6.9 / R17 Pro CPH1877 V1.6.17 / R17 PBEM00 V1.6.17 / A5 2020 V1.7.6 / K3 CPH1955 V1.6.26 UFS
                 #Reno 5G CPH1921 V1.6.26 / Realme 3 Pro RMX1851 V1.6.17 / Reno 10X Zoom V1.6.26 / R17 CPH1879 V1.6.17 / R17 Neo CPH1893 / K1 PBCM30
                 ["V1.6.6/1.6.9/1.6.17/1.6.24/1.6.26/1.7.6", "3C2D518D9BF2E4279DC758CD535147C3","87C74A29709AC1BF2382276C4E8DF232","598D92E967265E9BCABE2469FE4A915E"],
-                #a3s
-                ["V1.6.17",                                 "E11AA7BB558A436A8375FD15DDD4651F","77DDF6A0696841F6B74782C097835169","A739742384A44E8BA45207AD5C3700EA"],
                 #RM1921EX V1.7.2, Realme X RMX1901 V1.7.2, Realme 5 Pro RMX1971 V1.7.2, Realme 5 RMX1911 V1.7.2
                 ["V1.7.2",                                  "8FB8FB261930260BE945B841AEFA9FD4","E529E82B28F5A2F8831D860AE39E425D","8A09DA60ED36F125D64709973372C1CF"]
     ]
@@ -72,24 +86,11 @@ def generatekey2(filename):
         #ivec=bytearray(unhexlify("386935399137416B67416BECF22F519A"))
         #mc=bytearray(unhexlify("9E4F32639D21357D37D226B69A495D21"))
 
-        for i in range(0,len(userkey)):
-            v=ROL((userkey[i]^mc[i]),4,8)
-            key.append(v)
+        key=deobfuscate(userkey,mc)
+        iv=deobfuscate(ivec,mc)
 
-        for i in range(0,len(userkey)):
-            v=ROL((ivec[i]^mc[i]),4,8)
-            iv.append(v)
-
-        h=MD5.new()
-        h.update(key)
-        key=h.digest()
-
-        h = MD5.new()
-        h.update(iv)
-        iv = h.digest()
-
-        key=hexlify(key).lower()[0:16]
-        iv=hexlify(iv).lower()[0:16]
+        key=bytestolow(key)
+        iv=bytestolow(iv)
         pagesize,data=extract_xml(filename,key,iv)
         if pagesize!=0:
             return pagesize,key,iv,data
@@ -137,18 +138,16 @@ def aes_cfb(data,key,iv):
     decrypted = ctx.decrypt(data)
     return decrypted
 
-def copysub(rf,wf,start,length,checksums):
+def copysub(rf,wf,start,length):
     rf.seek(start)
     rlen=0
-    while (length > 0):
+    while length > 0:
         if length < 0x100000:
             size = length
         else:
             size = 0x100000
         data = rf.read(size)
         wf.write(data)
-        checksums[0].update(data)
-        checksums[1].update(data)
         rlen+=len(data)
         length -= size
     return rlen
@@ -161,14 +160,16 @@ def copy(filename,wfilename,path, start,length,checksums):
         with open(os.path.join(path, wfilename), 'wb') as wf:
             rf.seek(start)
             data=rf.read(length)
-            if sha256sum!="":
-                sha256val=hashlib.sha256(data).hexdigest()
-            if md5sum!="":
-                md5val=hashlib.md5(data).hexdigest()
-            if sha256sum!=sha256val:
-                if md5sum!=md5val:
-                    print("Error on hashes. File might be broken !")
             wf.write(data)
+
+    with open(os.path.join(path, wfilename), "rb") as rf:
+        sha256 = hashlib.sha256(rf.read(0x40000))
+        rf.seek(0)
+        md5 = hashlib.md5(rf.read(0x40000))
+        if sha256sum != "":
+            if sha256sum != sha256.hexdigest():
+                if md5sum != md5.hexdigest():
+                    print("Error on hashes. File might be broken ! Copy")
 
 def decryptfile(key,iv,filename,path,wfilename,start,length,rlength,checksums,decryptsize=0x40000):
     sha256sum = checksums[0]
@@ -181,8 +182,6 @@ def decryptfile(key,iv,filename,path,wfilename,start,length,rlength,checksums,de
             length+=0x4
 
     with open(filename, 'rb') as rf:
-        sha256 = hashlib.sha256()
-        md5 = hashlib.md5()
         with open(os.path.join(path, wfilename), 'wb') as wf:
             rf.seek(start)
             size=decryptsize
@@ -193,21 +192,28 @@ def decryptfile(key,iv,filename,path,wfilename,start,length,rlength,checksums,de
                 data+=(4-(size%4))*b'\x00'
             outp = aes_cfb(data, key, iv)
             wf.write(outp[:size])
-            sha256.update(outp[:size])
-            md5.update(outp[:size])
 
             if rlength > decryptsize:
-                copysub(rf, wf, start + size, rlength-size, [sha256,md5])
+                copysub(rf, wf, start + size, rlength-size)
 
             if rlength%0x1000!=0:
                 fill=bytearray([0x00 for i in range(0x1000-(rlength%0x1000))])
                 #wf.write(fill)
-                sha256.update(fill)
 
-            if sha256sum!="":
+        with open(os.path.join(path, wfilename),"rb") as rf:
+            sha256 = hashlib.sha256(rf.read(0x40000))
+            rf.seek(0)
+            md5 = hashlib.md5(rf.read(0x40000))
+            sha256bad=False
+            md5bad=False
+            if sha256sum != "":
                 if sha256sum != sha256.hexdigest():
-                    if md5sum != md5.hexdigest():
-                        print("Error on hashes. File might be broken ! Crypt")
+                    sha256bad=True
+            if md5sum != "":
+                if md5sum != md5.hexdigest():
+                    md5bad=True
+            if sha256bad and md5bad:
+                print("Error on hashes. File might be broken ! Crypt")
 
 def main():
     if len(sys.argv)<3:
@@ -303,7 +309,7 @@ def main():
                     wfilename = item.attrib["filename"]
                     if wfilename == "":
                         continue
-                    start = int(item.attrib["FileOffsetInSrc"])
+                    start = int(item.attrib["FileOffsetInSrc"]) * pagesize
                     rlength = int(item.attrib["SizeInByteInSrc"])
                     if "sha256" in item.attrib:
                         sha256sum=item.attrib["sha256"]
