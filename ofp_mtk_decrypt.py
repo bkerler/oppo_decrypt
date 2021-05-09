@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Oppo OFP MTK Decrypter (c) B. Kerler 2020
 # Licensed under MIT License
 
