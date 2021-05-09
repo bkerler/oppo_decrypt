@@ -8,14 +8,16 @@ Oppo .ofp and Oneplus .ops Firmware decrypter
 * backdoor.py        : Enables hidden "readback" functionality
 
 
-Based on python 3.x
-
 Installation:
 -------------
+- Install >= python 3.8 and pip3
+
+In the console, run
+```bash
 pip3 install -r requirements.txt
+```
 
-
-Both Linux and Windows now, folks !
+Both Linux and Windows now supported, folks !
 
 Usage:
 -------- 
