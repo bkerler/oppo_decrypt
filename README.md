@@ -1,10 +1,11 @@
 # oppo_decrypt
-Oppo .ofp Firmware decrypter
+Oppo .ofp and Oneplus .ops Firmware decrypter
 ------------------------------------
 
-* ofp_qc_extract.py  : Decrypts oppo qc chipset based firmware with .ofp extension
-* ofp_mtk_decrypt.py  : Decrypts oppo mtk chipset based firmware with .ofp extension
-* backdoor.py : Enables hidden "readback" functionality
+* ofp_qc_extract.py  : Decrypts oppo qc chipset based firmware with .ofp extension (oppo)
+* ofp_mtk_decrypt.py : Decrypts oppo mtk chipset based firmware with .ofp extension (oppo)
+* opscrypto.py       : Decrypts and re-encrypts based firmware with .ops extension (oneplus)
+* backdoor.py        : Enables hidden "readback" functionality
 
 
 Based on python 3.x
@@ -18,12 +19,26 @@ Both Linux and Windows now, folks !
 
 Usage:
 -------- 
-* Extract ofp file:
+* Extract oppo ofp file:
 
 ```
 python3 ofp_qc_extract.py [myops.ofp] [directory to extract]
 python3 ofp_mtk_decrypt.py [myops.ofp] [directory to extract]
 ```
+
+* Extract oneplus ops file:
+
+```
+python3 opscrypto.py decrypt [myops.ops]
+```
+File will be in the extract subdirectory
+
+* Repack oneplus ops file:
+
+```
+python3 opscrypto.py encrypt [path to extracted firmware]
+```
+
 
 * Enable readback mode (use admin command prompt under windoze):
 ```
