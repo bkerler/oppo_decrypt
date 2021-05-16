@@ -303,7 +303,7 @@ def main():
                         copy(filename,wfilename,path,start,length,[sha256sum,md5sum])
                     else:
                         decryptfile(key,iv,filename, path, wfilename, start, length,length,[sha256sum,md5sum])
-        elif child.tag in ["AllFile","Data","Data1","Data2"]:
+        elif child.tag in ["AllFile","Data","Data1","Data2","Super"]:
             # if not os.path.exists(os.path.join(path, child.tag)):
             #    os.mkdir(os.path.join(path, child.tag))
             # spath = os.path.join(path, child.tag)
