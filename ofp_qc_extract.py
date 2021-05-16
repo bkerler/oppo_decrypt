@@ -263,6 +263,11 @@ def main():
     else:
         os.mkdir(path)
 
+    print("Saving ProFile.xml")
+    file_handle = open(path + os.sep + "ProFile.xml", mode = "w")
+    file_handle.write(xml)
+    file_handle.close()
+    
     root = ET.fromstring(xml)
     for child in root:
         if child.tag == "Sahara":
@@ -298,7 +303,7 @@ def main():
                         copy(filename,wfilename,path,start,length,[sha256sum,md5sum])
                     else:
                         decryptfile(key,iv,filename, path, wfilename, start, length,length,[sha256sum,md5sum])
-        elif child.tag in ["AllFile","Data","Data1","Data2"]:
+        elif child.tag in ["AllFile","Data","Data1","Data2","Super"]:
             # if not os.path.exists(os.path.join(path, child.tag)):
             #    os.mkdir(os.path.join(path, child.tag))
             # spath = os.path.join(path, child.tag)
