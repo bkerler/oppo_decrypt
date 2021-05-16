@@ -263,6 +263,11 @@ def main():
     else:
         os.mkdir(path)
 
+    print("Saving ProFile.xml")
+    file_handle = open(path + os.sep + "ProFile.xml", mode = "w")
+    file_handle.write(xml)
+    file_handle.close()
+    
     root = ET.fromstring(xml)
     for child in root:
         if child.tag == "Sahara":
