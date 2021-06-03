@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Oneplus Decrypter (c) V 1.3 B.Kerler 2019-2020.
+# Oneplus Decrypter (c) V 1.4 B.Kerler 2019-2021
 # Licensed under MIT License
 
 """
@@ -9,14 +9,16 @@ Usage:
     opscrypto.py encryptfile <filename>
     opscrypto.py decryptfile <filename>
     opscrypto.py decrypt <filename>
-    opscrypto.py encrypt <directory> [--projid=value] [--firmwarename=name] [--savename=out.ops]
+    opscrypto.py encrypt <directory> [--projid=value] [--firmwarename=name] [--savename=out.ops] [--mbox=version]
 
 Options:
-    --projid=value          Set projid [default: "18801"]
-    --firmwarename=name     Set firmware name [default: "fajita_41_J.42_191214"]
-    --savename=name         Set ops filename [default: "out.ops"]
+    --projid=value          Set projid Example:18801
+    --mbox=version          Set encryption key [default: 5]
+    --firmwarename=name     Set firmware version Example:fajita_41_J.42_191214
+    --savename=name         Set ops filename [default: out.ops]
 
 """
+import sys
 
 from docopt import docopt
 
@@ -29,6 +31,23 @@ import xml.etree.ElementTree as ET
 import hashlib
 from pathlib import Path
 from queue import Queue
+
+import mmap
+
+def mmap_io(filename, mode, length=0):
+    if mode=="rb":
+        with open(filename, mode="rb") as file_obj:
+            return mmap.mmap(file_obj.fileno(), length=0, access=mmap.ACCESS_READ)
+    elif mode=="wb":
+        if os.path.exists(filename):
+            length=os.stat(filename).st_size
+        else:
+            with open(filename, "wb") as wf:
+                wf.write(length * b'\0')
+                wf.close()
+        with open(filename, mode="r+b") as file_obj:
+            return mmap.mmap(file_obj.fileno(), length=length, access=mmap.ACCESS_WRITE)
+        # mmap_obj.flush() on finish
 
 key = unpack("<4I", bytes.fromhex("d1b5e39e5eea049d671dd5abd2afcbaf"))
 
@@ -124,7 +143,7 @@ sbox = bytes.fromhex("c66363a5c66363a5f87c7c84f87c7c84ee777799ee777799f67b7b8df6
 
 class QCSparse:
     def __init__(self, filename):
-        self.rf = open(filename, 'rb')
+        self.rf = mmap_io(filename,"rb")
         self.data = Queue()
         self.offset = 0
         self.tmpdata = bytearray()
@@ -353,15 +372,13 @@ def key_custom(inp, rkey, outlength=0, encrypt=False):
         for ptr in range(0, length, 0x10):
             rkey = key_update(rkey, mbox)
             if pos < 0x10:
-                j = pos
-                for i in range(0, ((0xf - pos) >> 2) + 1):
-                    tmp = int.from_bytes(inp[j + ptr:j + ptr + 4],"little")
-                    outp_extend((tmp ^ rkey[i]).to_bytes(4,'little'))
-                    if encrypt:
-                        rkey[i] = tmp ^ rkey[i]
-                    else:
-                        rkey[i] = tmp
-                    j += 4
+                slen=((0xf - pos) >> 2) + 1
+                tmp = [rkey[i]^int.from_bytes(inp[pos + (i*4) + ptr:pos + (i*4) + ptr + 4],"little") for i in range(0, slen)]
+                outp.extend(b"".join(tmp[i].to_bytes(4,'little') for i in range(0, slen)))
+                if encrypt:
+                    rkey = tmp
+                else:
+                    rkey = [int.from_bytes(inp[pos + (i*4) + ptr:pos + (i*4) + ptr + 4],"little") for i in range(0, slen)]
             length = length - 0x10
     if length != 0:
         rkey = key_update(rkey, sbox)
@@ -384,33 +401,35 @@ def key_custom(inp, rkey, outlength=0, encrypt=False):
 
 
 def extractxml(filename, key):
-    print(f"Extracting {filename}")
-    with open(filename, 'rb') as rf:
+    with mmap_io(filename, 'rb') as rf:
         sfilename = os.path.join(filename[:-len(os.path.basename(filename))], "extract", "settings.xml")
-        with open(sfilename, 'wb') as wf:
-            filesize = os.stat(filename).st_size
-            rf.seek(filesize - 0x200)
-            hdr = rf.read(0x200)
-            xmllength = int.from_bytes(hdr[0x18:0x18 + 4],'little')
-            xmlpad = 0x200 - (xmllength % 0x200)
-            rf.seek(filesize - 0x200 - (xmllength + xmlpad))
-            inp = rf.read(xmllength + xmlpad)
-            outp = key_custom(inp, key, 0)
+        filesize = os.stat(filename).st_size
+        rf.seek(filesize - 0x200)
+        hdr = rf.read(0x200)
+        xmllength = int.from_bytes(hdr[0x18:0x18 + 4],'little')
+        xmlpad = 0x200 - (xmllength % 0x200)
+        rf.seek(filesize - 0x200 - (xmllength + xmlpad))
+        inp = rf.read(xmllength + xmlpad)
+        outp = key_custom(inp, key, 0)
+        if b"xml " not in outp:
+            return None
+        with mmap_io(sfilename, 'wb',xmllength) as wf:
             wf.write(outp[:xmllength])
-            return outp[:xmllength].decode('utf-8')
+        return outp[:xmllength].decode('utf-8')
+
 
 
 def decryptfile(rkey, filename, path, wfilename, start, length):
     sha256 = hashlib.sha256()
     print(f"Extracting {wfilename}")
-    with open(filename, 'rb') as rf:
-        with open(os.path.join(path, wfilename), 'wb') as wf:
-            rf.seek(start)
-            data = rf.read(length)
-            if length % 4:
-                data += (4 - (length % 4)) * b'\x00'
-            outp = key_custom(data, rkey, 0)
-            sha256.update(outp[:length])
+    with mmap_io(filename, 'rb') as rf:
+        rf.seek(start)
+        data = rf.read(length)
+        if length % 4:
+            data += (4 - (length % 4)) * b'\x00'
+        outp = key_custom(data, rkey, 0)
+        sha256.update(outp[:length])
+        with mmap_io(os.path.join(path, wfilename), 'wb', length) as wf:
             wf.write(outp[:length])
     if length % 0x1000 > 0:
         sha256.update(b"\x00" * (0x1000 - (length % 0x1000)))
@@ -433,13 +452,14 @@ def encryptsub(rkey, rf, wf):
 
 def encryptfile(key, filename, wfilename):
     print(f"Encrypting {filename}")
-    with open(filename, 'rb') as rf:
-        with open(wfilename, 'wb') as wf:
+    with mmap_io(filename, 'rb') as rf:
+        filesize=os.stat(filename).st_size
+        with mmap_io(wfilename, 'wb', filesize) as wf:
             return encryptsub(key, rf, wf)
 
 
-def calc_digest(filename,slength):
-    with open(filename, "rb") as rf:
+def calc_digest(filename):
+    with mmap_io(filename, 'rb') as rf:
         data = rf.read()
         sha256 = hashlib.sha256()
         sha256.update(data)
@@ -460,12 +480,13 @@ def copysub(rf, wf, start, length):
         wf.write(data)
         rlen += len(data)
         length -= size
+    return rlen
 
 
 def copyfile(filename, path, wfilename, start, length):
     print(f"Extracting {wfilename}")
-    with open(filename, 'rb') as rf:
-        with open(os.path.join(path, wfilename), 'wb') as wf:
+    with mmap_io(filename, 'rb') as rf:
+        with mmap_io(os.path.join(path, wfilename), 'wb', length) as wf:
             return copysub(rf, wf, start, length)
 
 
@@ -485,7 +506,7 @@ def encryptitem(key, item, directory, pos, wf):
     if (size % 0x200) != 0:
         sectors += 1
     item.attrib["SizeInSectorInSrc"] = str(sectors)
-    with open(filename, 'rb') as rf:
+    with mmap_io(filename, 'rb') as rf:
         rlen = encryptsub(key, rf, wf)
         pos += rlen
         if (rlen % 0x200) != 0:
@@ -512,7 +533,7 @@ def copyitem(item, directory, pos, wf):
     if (size % 0x200) != 0:
         sectors += 1
     item.attrib["SizeInSectorInSrc"] = str(sectors)
-    with open(filename, 'rb') as rf:
+    with mmap_io(filename, 'rb') as rf:
         rlen = copysub(rf, wf, 0, size)
         pos += rlen
         if (rlen % 0x200) != 0:
@@ -524,9 +545,10 @@ def copyitem(item, directory, pos, wf):
 
 def main():
     global mbox
-    print("Oneplus CryptTools V1.3 (c) B. Kerler 2019-2021\nMIT License\n----------------------------\n")
+    print("Oneplus CryptTools V1.4 (c) B. Kerler 2019-2021\n----------------------------\n")
     if args["decrypt"]:
         filename = args["<filename>"].replace("\\", "/")
+        print(f"Extracting {filename}")
         if "/" in filename:
             path = filename[:filename.rfind("/")]
         else:
@@ -537,21 +559,21 @@ def main():
             os.mkdir(path)
         else:
             os.mkdir(path)
-        try:
-            mbox = mbox4
+        mbox = mbox5
+        xml = extractxml(filename, key)
+        if xml is not None:
+            print("MBox5")
+        else:
+            mbox = mbox6
             xml = extractxml(filename, key)
-            print("MBox4")
-        except:
-            try:
-                mbox = mbox5
+            if xml is not None:
+                print("MBox6")
+            else:
+                mbox = mbox4
                 xml = extractxml(filename, key)
-                print("MBox5")
-            except:
-                try:
-                    mbox = mbox6
-                    xml = extractxml(filename, key)
-                    print("MBox6")
-                except:
+                if xml is not None:
+                    print("MBox4")
+                else:
                     print("Unsupported key !")
                     exit(0)
         root = ET.fromstring(xml)
@@ -602,7 +624,7 @@ def main():
                                 length = int(subitem.attrib["SizeInByteInSrc"])
                                 sha256 = subitem.attrib["Sha256"]
                                 copyfile(filename, path, wfilename, start, length)
-                                csha256 = calc_digest(os.path.join(path,wfilename),slength)
+                                csha256 = calc_digest(os.path.join(path,wfilename))
                                 if sha256 != csha256 and not sparse:
                                     print("Sha256 fail.")
             # else:
@@ -610,16 +632,30 @@ def main():
         print("Done. Extracted files to " + path)
         exit(0)
     elif args["encrypt"]:
-        mbox = mbox5
+        if args["--mbox"] == "4":
+            mbox = mbox4
+        elif args["--mbox"] == "5":
+            mbox = mbox5
+        elif args["--mbox"] == "6":
+            mbox = mbox6
         directory = args["<directory>"].replace("\\", "/")
         settings = os.path.join(directory, "settings.xml")
         # root = ET.fromstring(settings)
         tree = ET.parse(settings)
         root = tree.getroot()
         outfilename = os.path.join(Path(directory).parent, args["--savename"])
+        projid = None
+        firmware = None
+        if os.path.exists(outfilename):
+            os.remove(outfilename)
         with open(outfilename, 'wb') as wf:
             pos = 0
             for child in root:
+                if child.tag == "BasicInfo":
+                    if "Project" in child.attrib:
+                        projid = child.attrib["Project"]
+                    if "Version" in child.attrib:
+                        firmware = child.attrib["Version"]
                 if child.tag == "SAHARA":
                     for item in child:
                         if item.tag == "File":
@@ -637,12 +673,6 @@ def main():
                                 subitem, pos = copyitem(subitem, directory, pos, wf)
             try:
                 configpos = pos // 0x200
-                tree.write(settings + ".new")
-                with open(settings + ".new", 'rb') as rm:
-                    with open(settings, 'wb') as wm:
-                        data = b"\xEF\xBB\xBF<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n" + rm.read() + b"\x0a"
-                        wm.write(data)
-                os.remove(settings + ".new")
                 with open(settings, 'rb') as rf:
                     data = rf.read()
                     rlength = len(data)
@@ -652,8 +682,17 @@ def main():
                         sublen = 0x200 - ((rlen + pos) % 0x200)
                         wf.write(b'\x00' * sublen)
                         pos += sublen
-                projid = args["--projid"]
-                firmware = args["--firmwarename"]
+                if args["--projid"] is None:
+                    if projid is None:
+                        projid="18801"
+                else:
+                    projid=args["--projid"]
+
+                if args["--firmwarename"] is None:
+                    if firmware is None:
+                        firmware = "fajita_41_J.42_191214"
+                else:
+                    firmware = args["--firmwarename"]
                 magic = 0x7CEF
                 hdr = b""
                 hdr += pack("<I", 2)
@@ -676,7 +715,7 @@ def main():
                 print("Done. Created " + outfilename)
             except Exception as e:
                 print(e)
-            exit(0)
+        exit(0)
     elif args["encryptfile"]:
         filename = args["<filename>"].replace("\\", "/")
         mbox = mbox5
