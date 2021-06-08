@@ -609,7 +609,7 @@ def main():
                         length = int(item.attrib["SizeInByteInSrc"])
                         sha256 = item.attrib["Sha256"]
                         copyfile(filename, path, wfilename, start, length)
-                        csha256 = calc_digest(os.path.join(path,wfilename),slength)
+                        csha256 = calc_digest(os.path.join(path,wfilename))
                         if sha256 != csha256 and not sparse:
                             print("Sha256 fail.")
                     else:
