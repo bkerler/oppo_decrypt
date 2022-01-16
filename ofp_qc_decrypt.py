@@ -333,6 +333,8 @@ def main():
                 continue
             if child.tag in ["Sahara"]:
                 decryptsize=rlength
+            if child.tag in ["Config","Provision","ChainedTableOfDigests","DigestsToSign"]:
+                length=rlength
             if child.tag in ["DigestsToSign","ChainedTableOfDigests"]:
                 copy(filename,wfilename,path,start,length,checksums)
             else:
