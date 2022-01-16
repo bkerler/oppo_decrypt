@@ -297,11 +297,11 @@ def main():
     
     root = ET.fromstring(xml)
     for child in root:
-        if child.tag == "Sahara":
+        if child.tag in ["Sahara", "Firmware"]:
             for item in child:
                 sha256sum=""
                 md5sum=""
-                if item.tag == "File":
+                if item.tag in ["File", "config"]:
                     if "sha256" in item.attrib:
                         sha256sum=item.attrib["sha256"]
                     if "md5" in item.attrib:
