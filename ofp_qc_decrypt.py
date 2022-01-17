@@ -126,20 +126,17 @@ def generatekey2(filename):
 def extract_xml(filename,key,iv):
     filesize=os.stat(filename).st_size
     with open(filename,'rb') as rf:
-        pagesize = 0x200
+        pagesize = 0
+        for x in [0x200, 0x1000]:
+            rf.seek(filesize-x+0x10)
+            if unpack("<I",rf.read(4))[0]==0x7CEF:
+                pagesize = x
+                break 
+        if pagesize == 0:
+            print("Unknown pagesize. Aborting")
+            exit(0)
+            
         xmloffset=filesize-pagesize
-        rf.seek(xmloffset+0x10)
-        if unpack("<I",rf.read(4))[0]==0x7CEF:
-            pagesize=0x200
-        else:
-            pagesize=0x1000
-            xmloffset=filesize-pagesize
-            rf.seek(xmloffset + 0x10)
-            magic=unpack("<I", rf.read(4))[0]
-            if not magic == 0x7CEF:
-                print("Unknown pagesize. Aborting")
-                exit(0)
-
         rf.seek(xmloffset+0x14)
         offset=unpack("<I",rf.read(4))[0]*pagesize
         length=unpack("<I",rf.read(4))[0]
@@ -179,28 +176,17 @@ def copysub(rf,wf,start,length):
     return rlen
 
 def copy(filename,wfilename,path, start,length,checksums):
-    sha256sum=checksums[0]
-    md5sum=checksums[1]
-    print(f"Extracting {wfilename}.")
+    print(f"\nExtracting {wfilename}")
     with open(filename, 'rb') as rf:
         with open(os.path.join(path, wfilename), 'wb') as wf:
             rf.seek(start)
             data=rf.read(length)
             wf.write(data)
 
-    with open(os.path.join(path, wfilename), "rb") as rf:
-        sha256 = hashlib.sha256(rf.read(0x40000))
-        rf.seek(0)
-        md5 = hashlib.md5(rf.read(0x40000))
-        if sha256sum != "":
-            if sha256sum != sha256.hexdigest():
-                if md5sum != md5.hexdigest():
-                    print("Error on hashes. File might be broken ! Copy")
+    checkhashfile(os.path.join(path, wfilename), checksums, True)
 
 def decryptfile(key,iv,filename,path,wfilename,start,length,rlength,checksums,decryptsize=0x40000):
-    sha256sum = checksums[0]
-    md5sum = checksums[1]
-    print(f"Extracting {wfilename}")
+    print(f"\nExtracting {wfilename}")
     if rlength==length:
         tlen=length
         length=(length//0x4*0x4)
@@ -226,21 +212,67 @@ def decryptfile(key,iv,filename,path,wfilename,start,length,rlength,checksums,de
                 fill=bytearray([0x00 for i in range(0x1000-(rlength%0x1000))])
                 #wf.write(fill)
 
-        with open(os.path.join(path, wfilename),"rb") as rf:
-            sha256 = hashlib.sha256(rf.read(0x40000))
-            rf.seek(0)
-            md5 = hashlib.md5(rf.read(0x40000))
-            sha256bad=False
-            md5bad=False
-            if sha256sum != "":
-                if sha256sum != sha256.hexdigest():
-                    sha256bad=True
-            if md5sum != "":
-                if md5sum != md5.hexdigest():
-                    md5bad=True
-            if sha256bad and md5bad:
-                print("Error on hashes. File might be broken ! Crypt")
-
+    checkhashfile(os.path.join(path, wfilename), checksums, False)
+            
+def checkhashfile(wfilename, checksums, iscopy):
+    sha256sum = checksums[0]
+    md5sum = checksums[1]
+    if iscopy:
+        prefix = "Copy: "
+    else:
+        prefix = "Decrypt: "
+    with open(wfilename,"rb") as rf:
+        sha256 = hashlib.sha256(rf.read(0x40000))
+        rf.seek(0)
+        md5 = hashlib.md5(rf.read(0x40000))
+        sha256bad=False
+        md5bad=False
+        md5status="empty"
+        sha256status="empty"
+        if sha256sum != "":
+            if sha256sum != sha256.hexdigest():
+                sha256bad=True
+                sha256status="bad"
+            else:
+                sha256status="verified"
+        if md5sum != "":
+            if md5sum != md5.hexdigest():
+                md5bad=True
+                md5status="bad"
+            else:
+                md5status="verified"
+        if sha256bad and md5bad:
+            print(f"{prefix}error on hashes. File might be broken!")
+        else:
+            print(f"{prefix}success! (md5: {md5status} | sha256: {sha256status})")
+            
+def decryptitem(item, pagesize):
+    sha256sum=""
+    md5sum=""
+    wfilename=""
+    start=0
+    rlength=0
+    decryptsize=0x40000
+    if "Path" in item.attrib:
+        wfilename = item.attrib["Path"]
+    elif "filename" in item.attrib:
+        wfilename = item.attrib["filename"]
+    if "sha256" in item.attrib:
+        sha256sum=item.attrib["sha256"]
+    if "md5" in item.attrib:
+        md5sum=item.attrib["md5"]
+    if "FileOffsetInSrc" in item.attrib:
+        start = int(item.attrib["FileOffsetInSrc"]) * pagesize
+    elif "SizeInSectorInSrc" in item.attrib:
+        start = int(item.attrib["SizeInSectorInSrc"]) * pagesize
+    if "SizeInByteInSrc" in item.attrib:
+        rlength = int(item.attrib["SizeInByteInSrc"])
+    if "SizeInSectorInSrc" in item.attrib:
+        length = int(item.attrib["SizeInSectorInSrc"]) * pagesize
+    else:
+        length=rlength
+    return wfilename, start, length, rlength,[sha256sum,md5sum],decryptsize
+        
 def main():
     if len(sys.argv)<3:
         print("Oppo MTK QC decrypt tool 1.1 (c) B.Kerler 2020-2021\n")
@@ -297,102 +329,25 @@ def main():
     
     root = ET.fromstring(xml)
     for child in root:
-        if child.tag == "Sahara":
-            for item in child:
-                sha256sum=""
-                md5sum=""
-                if item.tag == "File":
-                    if "sha256" in item.attrib:
-                        sha256sum=item.attrib["sha256"]
-                    if "md5" in item.attrib:
-                        md5sum=item.attrib["md5"]
-                    wfilename = item.attrib["Path"]
-                    start = int(item.attrib["FileOffsetInSrc"]) * pagesize
-                    length = int(item.attrib["SizeInSectorInSrc"]) * pagesize
-                    rlength = int(item.attrib["SizeInByteInSrc"])
-                    decryptfile(key, iv, filename, path, wfilename, start, length, rlength,[sha256sum,md5sum],rlength)
-        elif child.tag in ["Config","Provision","ChainedTableOfDigests","DigestsToSign"]:
-            for item in child:
-                sha256sum=""
-                md5sum=""
-                if item.tag == "config":
-                    wfilename = item.attrib["filename"]
-                    if "sha256" in item.attrib:
-                        sha256sum=item.attrib["sha256"]
-                    if "md5" in item.attrib:
-                        md5sum=item.attrib["md5"]
-                    if "SizeInSectorInSrc" in item.attrib:
-                        start = int(item.attrib["SizeInSectorInSrc"]) * pagesize
-                    else:
+        for item in child:
+            if "Path" not in item.attrib and "filename" not in item.attrib:
+                for subitem in item:
+                    wfilename, start, length, rlength, checksums, decryptsize = decryptitem(subitem, pagesize)
+                    if wfilename=="" or start==0:
                         continue
-                    length = int(item.attrib["SizeInByteInSrc"])
-                    if child.tag in ["DigestsToSign","ChainedTableOfDigests"]:
-                        copy(filename,wfilename,path,start,length,[sha256sum,md5sum])
-                    else:
-                        decryptfile(key,iv,filename, path, wfilename, start, length,length,[sha256sum,md5sum])
-        elif child.tag in ["AllFile","Data","Data1","Data2","Super"]:
-            # if not os.path.exists(os.path.join(path, child.tag)):
-            #    os.mkdir(os.path.join(path, child.tag))
-            # spath = os.path.join(path, child.tag)
-            for item in child:
-                sha256sum=""
-                md5sum=""
-                if "filename" in item.attrib:
-                    wfilename = item.attrib["filename"]
-                    if wfilename == "":
-                        continue
-                    start = int(item.attrib["FileOffsetInSrc"]) * pagesize
-                    rlength = int(item.attrib["SizeInByteInSrc"])
-                    if "sha256" in item.attrib:
-                        sha256sum=item.attrib["sha256"]
-                    if "md5" in item.attrib:
-                        md5sum=item.attrib["md5"]
-                    if "SizeInSectorInSrc" in item.attrib:
-                        length = int(item.attrib["SizeInSectorInSrc"]) * pagesize
-                    else:
-                        length=rlength
-                    decryptfile(key,iv,filename, path, wfilename, start, length,rlength,[sha256sum,md5sum])
-        elif "Program" in child.tag:
-            # if not os.path.exists(os.path.join(path, child.tag)):
-            #    os.mkdir(os.path.join(path, child.tag))
-            # spath = os.path.join(path, child.tag)
-            for item in child:
-                sha256sum=""
-                md5sum=""
-                if "filename" in item.attrib:
-                    wfilename = item.attrib["filename"]
-                    if wfilename == "":
-                        continue
-                    if "sha256" in item.attrib:
-                        sha256sum = item.attrib["sha256"]
-                    if "md5" in item.attrib:
-                        md5sum = item.attrib["md5"]
-                    start = int(item.attrib["FileOffsetInSrc"]) * pagesize
-                    rlength = int(item.attrib["SizeInByteInSrc"]) #0x310c4
-                    if "SizeInSectorInSrc" in item.attrib:
-                        length = int(item.attrib["SizeInSectorInSrc"]) * pagesize #0x188000
-                    else:
-                        length=rlength
-                    decryptfile(key,iv,filename, path, wfilename, start, length,rlength,[sha256sum,md5sum])
-                else:
-                    for subitem in item:
-                        sha256sum=""
-                        md5sum=""
-                        if "filename" in subitem.attrib:
-                            if "sha256" in item.attrib:
-                                sha256sum = item.attrib["sha256"]
-                            if "md5" in item.attrib:
-                                md5sum = item.attrib["md5"]
-                            wfilename = subitem.attrib["filename"]
-                            if wfilename == "":
-                                continue
-                            start = int(subitem.attrib["FileOffsetInSrc"]) * pagesize
-                            length = int(subitem.attrib["SizeInSectorInSrc"]) * pagesize
-                            rlength = int(item.attrib["SizeInByteInSrc"])
-                            decryptfile(key,iv,filename, path, wfilename, start, length,rlength,[sha256sum,md5sum])
-        # else:
-        #    print (child.tag, child.attrib)
-    print("Done. Extracted files to " + path)
+                    decryptfile(key, iv, filename, path, wfilename, start, length, rlength, checksums, decryptsize)
+            wfilename, start, length, rlength, checksums, decryptsize = decryptitem(item, pagesize)
+            if wfilename=="" or start==0:
+                continue
+            if child.tag in ["Sahara"]:
+                decryptsize=rlength
+            if child.tag in ["Config","Provision","ChainedTableOfDigests","DigestsToSign"]:
+                length=rlength
+            if child.tag in ["DigestsToSign","ChainedTableOfDigests"]:
+                copy(filename,wfilename,path,start,length,checksums)
+            else:
+                decryptfile(key, iv, filename, path, wfilename, start, length, rlength, checksums, decryptsize)
+    print("\nDone. Extracted files to " + path)
     exit(0)
 
 
