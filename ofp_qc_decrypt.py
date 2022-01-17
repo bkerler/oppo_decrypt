@@ -176,28 +176,17 @@ def copysub(rf,wf,start,length):
     return rlen
 
 def copy(filename,wfilename,path, start,length,checksums):
-    sha256sum=checksums[0]
-    md5sum=checksums[1]
-    print(f"Extracting {wfilename}.")
+    print(f"\nExtracting {wfilename}")
     with open(filename, 'rb') as rf:
         with open(os.path.join(path, wfilename), 'wb') as wf:
             rf.seek(start)
             data=rf.read(length)
             wf.write(data)
 
-    with open(os.path.join(path, wfilename), "rb") as rf:
-        sha256 = hashlib.sha256(rf.read(0x40000))
-        rf.seek(0)
-        md5 = hashlib.md5(rf.read(0x40000))
-        if sha256sum != "":
-            if sha256sum != sha256.hexdigest():
-                if md5sum != md5.hexdigest():
-                    print("Error on hashes. File might be broken ! Copy")
+    checkhashfile(os.path.join(path, wfilename), checksums, True)
 
 def decryptfile(key,iv,filename,path,wfilename,start,length,rlength,checksums,decryptsize=0x40000):
-    sha256sum = checksums[0]
-    md5sum = checksums[1]
-    print(f"Extracting {wfilename}")
+    print(f"\nExtracting {wfilename}")
     if rlength==length:
         tlen=length
         length=(length//0x4*0x4)
@@ -223,21 +212,40 @@ def decryptfile(key,iv,filename,path,wfilename,start,length,rlength,checksums,de
                 fill=bytearray([0x00 for i in range(0x1000-(rlength%0x1000))])
                 #wf.write(fill)
 
-        with open(os.path.join(path, wfilename),"rb") as rf:
-            sha256 = hashlib.sha256(rf.read(0x40000))
-            rf.seek(0)
-            md5 = hashlib.md5(rf.read(0x40000))
-            sha256bad=False
-            md5bad=False
-            if sha256sum != "":
-                if sha256sum != sha256.hexdigest():
-                    sha256bad=True
-            if md5sum != "":
-                if md5sum != md5.hexdigest():
-                    md5bad=True
-            if sha256bad and md5bad:
-                print("Error on hashes. File might be broken ! Crypt")
-                
+    checkhashfile(os.path.join(path, wfilename), checksums, False)
+            
+def checkhashfile(wfilename, checksums, iscopy):
+    sha256sum = checksums[0]
+    md5sum = checksums[1]
+    if iscopy:
+        prefix = "Copy: "
+    else:
+        prefix = "Decrypt: "
+    with open(wfilename,"rb") as rf:
+        sha256 = hashlib.sha256(rf.read(0x40000))
+        rf.seek(0)
+        md5 = hashlib.md5(rf.read(0x40000))
+        sha256bad=False
+        md5bad=False
+        md5status="empty"
+        sha256status="empty"
+        if sha256sum != "":
+            if sha256sum != sha256.hexdigest():
+                sha256bad=True
+                sha256status="bad"
+            else:
+                sha256status="verified"
+        if md5sum != "":
+            if md5sum != md5.hexdigest():
+                md5bad=True
+                md5status="bad"
+            else:
+                md5status="verified"
+        if sha256bad and md5bad:
+            print(f"{prefix}error on hashes. File might be broken!")
+        else:
+            print(f"{prefix}success! (md5: {md5status} | sha256: {sha256status})")
+            
 def decryptitem(item, pagesize):
     sha256sum=""
     md5sum=""
@@ -339,7 +347,7 @@ def main():
                 copy(filename,wfilename,path,start,length,checksums)
             else:
                 decryptfile(key, iv, filename, path, wfilename, start, length, rlength, checksums, decryptsize)
-    print("Done. Extracted files to " + path)
+    print("\nDone. Extracted files to " + path)
     exit(0)
 
 
