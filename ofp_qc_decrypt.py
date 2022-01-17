@@ -250,7 +250,7 @@ def decryptitem(item, pagesize):
     sha256sum=""
     md5sum=""
     wfilename=""
-    start=0
+    start=-1
     rlength=0
     decryptsize=0x40000
     if "Path" in item.attrib:
@@ -333,11 +333,11 @@ def main():
             if "Path" not in item.attrib and "filename" not in item.attrib:
                 for subitem in item:
                     wfilename, start, length, rlength, checksums, decryptsize = decryptitem(subitem, pagesize)
-                    if wfilename=="" or start==0:
+                    if wfilename=="" or start==-1:
                         continue
                     decryptfile(key, iv, filename, path, wfilename, start, length, rlength, checksums, decryptsize)
             wfilename, start, length, rlength, checksums, decryptsize = decryptitem(item, pagesize)
-            if wfilename=="" or start==0:
+            if wfilename=="" or start==-1:
                 continue
             if child.tag in ["Sahara"]:
                 decryptsize=rlength
