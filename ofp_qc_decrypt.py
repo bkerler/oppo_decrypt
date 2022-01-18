@@ -222,19 +222,22 @@ def checkhashfile(wfilename, checksums, iscopy):
     else:
         prefix = "Decrypt: "
     with open(wfilename,"rb") as rf:
-        sha256 = hashlib.sha256(rf.read(0x40000))
-        rf.seek(0)
+        size = os.stat(wfilename).st_size
         md5 = hashlib.md5(rf.read(0x40000))
         sha256bad=False
         md5bad=False
         md5status="empty"
         sha256status="empty"
         if sha256sum != "":
-            if sha256sum != sha256.hexdigest():
-                sha256bad=True
-                sha256status="bad"
-            else:
-                sha256status="verified"
+            for x in [0x40000, size]:
+                rf.seek(0)
+                sha256 = hashlib.sha256(rf.read(x))
+                if sha256sum != sha256.hexdigest():
+                    sha256bad=True
+                    sha256status="bad"
+                else:
+                    sha256status="verified"
+                    break
         if md5sum != "":
             if md5sum != md5.hexdigest():
                 md5bad=True
@@ -341,9 +344,9 @@ def main():
                 continue
             if child.tag in ["Sahara"]:
                 decryptsize=rlength
-            if child.tag in ["Config","Provision","ChainedTableOfDigests","DigestsToSign"]:
+            if child.tag in ["Config","Provision","ChainedTableOfDigests","DigestsToSign", "Firmware"]:
                 length=rlength
-            if child.tag in ["DigestsToSign","ChainedTableOfDigests"]:
+            if child.tag in ["DigestsToSign","ChainedTableOfDigests", "Firmware"]:
                 copy(filename,wfilename,path,start,length,checksums)
             else:
                 decryptfile(key, iv, filename, path, wfilename, start, length, rlength, checksums, decryptsize)
