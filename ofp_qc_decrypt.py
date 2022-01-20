@@ -244,7 +244,7 @@ def checkhashfile(wfilename, checksums, iscopy):
                 md5status="bad"
             else:
                 md5status="verified"
-        if sha256bad and md5bad:
+        if (sha256bad and md5bad) or (sha256bad and md5sum=="") or (md5bad and sha256sum==""):
             print(f"{prefix}error on hashes. File might be broken!")
         else:
             print(f"{prefix}success! (md5: {md5status} | sha256: {sha256status})")
