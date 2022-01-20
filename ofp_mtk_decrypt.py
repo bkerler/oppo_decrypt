@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Oppo OFP MTK Decrypter (c) B. Kerler 2020
+# Oppo OFP MTK Decrypter (c) B. Kerler 2022
 # Licensed under MIT License
 
 import os
@@ -161,7 +161,7 @@ def main(filename,outdir):
     
 if __name__ == '__main__':
     if len(sys.argv) != 3:
-        print ("Oppo MTK OFP decrypt tool 1.1 (c) B.Kerler 2020-2021\n")
+        print ("Oppo MTK OFP decrypt tool 1.1 (c) B.Kerler 2020-2022\n")
         print ("Usage: %s <filename> <directory to extract>" % __file__)
         sys.exit(1)
     

@@ -160,7 +160,7 @@ def main(target_process):
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print ("Oppo MSMDownloadTool V4.01 Firmware decrypter (c) B.Kerler 2017-2019\n") 
+        print ("Oppo MSMDownloadTool V4.01 Firmware decrypter (c) B.Kerler 2017-2022\n") 
         print ("Usage: %s <process name:MSMDownloadTool.exe>" % __file__)
         sys.exit(1)
 
