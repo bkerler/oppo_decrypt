@@ -43,8 +43,18 @@ python3 opscrypto.py encrypt [path to extracted firmware]
 
 
 * Enable readback mode (use admin command prompt under windoze):
+
 ```
 python3 backdoor.py "MsmDownloadTool V4.0.exe"'
+```
+
+* Merge super images:
+
+The .ofp may contain super firmware from multiple carriers, check the super_map.csv.txt outside .ofp first.
+
+```
+sudo apt install simg2img # If you have already installed, skip this step.
+simg2img [super.0.xxxxxxxx.img] [super.1.xxxxxxxx.img] [super.1.xxxxxxxx.img] [filename to merge] # All split super imgs must be the same carrier
 ```
 
 License:
