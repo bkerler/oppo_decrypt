@@ -278,7 +278,7 @@ def decryptitem(item, pagesize):
         
 def main():
     if len(sys.argv)<3:
-        print("Oppo MTK QC decrypt tool 1.1 (c) B.Kerler 2020-2021\n")
+        print("Oppo MTK QC decrypt tool 1.1 (c) B.Kerler 2020-2022\n")
         print("Usage: ./ofp_qc_extract.py [Filename.ofp] [Directory to extract files to]")
         sys.exit(1)
 

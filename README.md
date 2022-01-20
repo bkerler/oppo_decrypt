@@ -24,7 +24,7 @@ Usage:
 * Extract oppo ofp file:
 
 ```
-python3 ofp_qc_extract.py [myops.ofp] [directory to extract]
+python3 ofp_qc_decrypt.py [myops.ofp] [directory to extract]
 python3 ofp_mtk_decrypt.py [myops.ofp] [directory to extract]
 ```
 
