@@ -7,7 +7,6 @@ import zipfile
 from struct import unpack
 from binascii import unhexlify, hexlify
 from Crypto.Cipher import AES
-from Crypto.Hash import MD5
 import hashlib
 import shutil
 
@@ -23,13 +22,11 @@ def keyshuffle(key, hkey):
         key[i + 3] = swap(hkey[i + 3] ^ key[i + 3])
     return key
 
-def ROR(x, n, bits = 32):
+def ROL(x, n, bits = 32):
+    n = bits - n
     mask = (2**n) - 1
     mask_bits = x & mask
     return (x >> n) | (mask_bits << (bits - n))
-
-def ROL(x, n, bits = 32):
-    return ROR(x, bits - n, bits)
 
 def generatekey1():
     key1 = "42F2D5399137E2B2813CD8ECDF2F4D72"
@@ -45,12 +42,6 @@ def generatekey1():
     key1 = keyshuffle(key1, key3)
     iv = bytes(hashlib.md5(key1).hexdigest()[0:16], 'utf-8')
     return aeskey,iv
-
-def bytestolow(data):
-    h = MD5.new()
-    h.update(data)
-    shash = h.digest()
-    return hexlify(shash).lower()[0:16]
 
 def deobfuscate(data,mask):
     ret=bytearray()
@@ -112,11 +103,9 @@ def generatekey2(filename):
         #ivec=bytearray(unhexlify("386935399137416B67416BECF22F519A"))
         #mc=bytearray(unhexlify("9E4F32639D21357D37D226B69A495D21"))
 
-        key=deobfuscate(userkey,mc)
-        iv=deobfuscate(ivec,mc)
-
-        key=bytestolow(key)
-        iv=bytestolow(iv)
+        key=(hashlib.md5(deobfuscate(userkey,mc)).hexdigest()[0:16]).encode()
+        iv=(hashlib.md5(deobfuscate(ivec,mc)).hexdigest()[0:16]).encode()
+        
         pagesize,data=extract_xml(filename,key,iv)
         if pagesize!=0:
             return pagesize,key,iv,data
