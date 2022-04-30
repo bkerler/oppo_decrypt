@@ -498,6 +498,7 @@ def encryptitem(key, item, directory, pos, wf):
         filename = item.attrib["filename"]
     if filename == "":
         return item, pos
+    print(f'Encrypting {filename}, pos={pos}')
     filename = os.path.join(directory, filename)
     start = pos // 0x200
     item.attrib["FileOffsetInSrc"] = str(start)
@@ -524,6 +525,7 @@ def copyitem(item, directory, pos, wf):
         filename = item.attrib["filename"]
     if filename == "":
         return item, pos
+    print(f'Copying {filename} @ pos={pos}')
     filename = os.path.join(directory, filename)
     start = pos // 0x200
     item.attrib["FileOffsetInSrc"] = str(start)
