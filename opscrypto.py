@@ -710,14 +710,15 @@ def main():
                 hdr += bytes(firmware, 'utf-8')
                 hdr += b"\x00" * (0x200 - len(hdr))
                 wf.write(hdr)
-                with open(outfilename, 'rb') as rt:
-                    with open("md5sum_pack.md5", 'wb') as wt:
-                        mt = hashlib.md5()
-                        mt.update(rt.read())
-                        wt.write(bytes(mt.hexdigest(), 'utf-8') + b" " + bytes(os.path.basename(outfilename), 'utf-8'))
-                print("Done. Created " + outfilename)
             except Exception as e:
                 print(e)
+        print(f'Calculating MD5 sum of {outfilename}')
+        with open(outfilename, 'rb') as rt:
+            with open("md5sum_pack.md5", 'wb') as wt:
+                mt = hashlib.md5()
+                mt.update(rt.read())
+                wt.write(bytes(mt.hexdigest(), 'utf-8') + b"  " + bytes(os.path.basename(outfilename), 'utf-8') + b"\n")
+        print("Done. Created " + outfilename)
         exit(0)
     elif args["encryptfile"]:
         filename = args["<filename>"].replace("\\", "/")
