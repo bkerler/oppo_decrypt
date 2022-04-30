@@ -8,10 +8,11 @@ Usage:
     opscrypto.py --help
     opscrypto.py encryptfile <filename>
     opscrypto.py decryptfile <filename>
-    opscrypto.py decrypt <filename>
+    opscrypto.py decrypt <filename> [--extractdir=extract]
     opscrypto.py encrypt <directory> [--projid=value] [--firmwarename=name] [--savename=out.ops] [--mbox=version]
 
 Options:
+    --extractdir=name       Set extract directory name [default: extract]
     --projid=value          Set projid Example:18801
     --mbox=version          Set encryption key [default: 5]
     --firmwarename=name     Set firmware version Example:fajita_41_J.42_191214
@@ -400,9 +401,9 @@ def key_custom(inp, rkey, outlength=0, encrypt=False):
     return outp
 
 
-def extractxml(filename, key):
+def extractxml(filename, key, path):
     with mmap_io(filename, 'rb') as rf:
-        sfilename = os.path.join(filename[:-len(os.path.basename(filename))], "extract", "settings.xml")
+        sfilename = os.path.join(path, "settings.xml")
         filesize = os.stat(filename).st_size
         rf.seek(filesize - 0x200)
         hdr = rf.read(0x200)
@@ -553,24 +554,24 @@ def main():
             path = filename[:filename.rfind("/")]
         else:
             path = ""
-        path = os.path.join(path, "extract")
+        path = os.path.join(path, args["--extractdir"])
         if os.path.exists(path):
             shutil.rmtree(path)
             os.mkdir(path)
         else:
             os.mkdir(path)
         mbox = mbox5
-        xml = extractxml(filename, key)
+        xml = extractxml(filename, key, path)
         if xml is not None:
             print("MBox5")
         else:
             mbox = mbox6
-            xml = extractxml(filename, key)
+            xml = extractxml(filename, key, path)
             if xml is not None:
                 print("MBox6")
             else:
                 mbox = mbox4
-                xml = extractxml(filename, key)
+                xml = extractxml(filename, key, path)
                 if xml is not None:
                     print("MBox4")
                 else:
