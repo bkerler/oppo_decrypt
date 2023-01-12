@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 from struct import unpack
 from binascii import unhexlify, hexlify
-from Crypto.Cipher import AES
+from Cryptodome.Cipher import AES
 import hashlib
 import shutil
 
