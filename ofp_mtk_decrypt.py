@@ -5,7 +5,7 @@
 import os
 import sys
 import hashlib
-from Crypto.Cipher import AES
+from Cryptodome.Cipher import AES
 from struct import unpack
 from binascii import unhexlify, hexlify
 
