@@ -651,7 +651,13 @@ def main():
         firmware = None
         if os.path.exists(outfilename):
             os.remove(outfilename)
+        mt = hashlib.md5()
         with open(outfilename, 'wb') as wf:
+            orig_write = wf.write
+            def new_write(data):
+                mt.update(data)
+                return orig_write(data)
+            wf.write = new_write
             pos = 0
             for child in root:
                 if child.tag == "BasicInfo":
@@ -712,12 +718,8 @@ def main():
                 wf.write(hdr)
             except Exception as e:
                 print(e)
-        print(f'Calculating MD5 sum of {outfilename}')
-        with open(outfilename, 'rb') as rt:
-            with open("md5sum_pack.md5", 'wb') as wt:
-                mt = hashlib.md5()
-                mt.update(rt.read())
-                wt.write(bytes(mt.hexdigest(), 'utf-8') + b"  " + bytes(os.path.basename(outfilename), 'utf-8') + b"\n")
+        with open("md5sum_pack.md5", 'wb') as wt:
+            wt.write(bytes(mt.hexdigest(), 'utf-8') + b"  " + bytes(os.path.basename(outfilename), 'utf-8') + b"\n")
         print("Done. Created " + outfilename)
         exit(0)
     elif args["encryptfile"]:
