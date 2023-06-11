@@ -8,10 +8,11 @@ Usage:
     opscrypto.py --help
     opscrypto.py encryptfile <filename>
     opscrypto.py decryptfile <filename>
-    opscrypto.py decrypt <filename>
+    opscrypto.py decrypt <filename> [--extractdir=extract]
     opscrypto.py encrypt <directory> [--projid=value] [--firmwarename=name] [--savename=out.ops] [--mbox=version]
 
 Options:
+    --extractdir=name       Set extract directory name [default: extract]
     --projid=value          Set projid Example:18801
     --mbox=version          Set encryption key [default: 5]
     --firmwarename=name     Set firmware version Example:fajita_41_J.42_191214
@@ -400,9 +401,9 @@ def key_custom(inp, rkey, outlength=0, encrypt=False):
     return outp
 
 
-def extractxml(filename, key):
+def extractxml(filename, key, path):
     with mmap_io(filename, 'rb') as rf:
-        sfilename = os.path.join(filename[:-len(os.path.basename(filename))], "extract", "settings.xml")
+        sfilename = os.path.join(path, "settings.xml")
         filesize = os.stat(filename).st_size
         rf.seek(filesize - 0x200)
         hdr = rf.read(0x200)
@@ -497,14 +498,18 @@ def encryptitem(key, item, directory, pos, wf):
         filename = item.attrib["filename"]
     if filename == "":
         return item, pos
+    print(f'Encrypting {filename}, pos={pos}')
     filename = os.path.join(directory, filename)
     start = pos // 0x200
+    assert item.attrib["FileOffsetInSrc"] == str(start), (item, item.attrib["FileOffsetInSrc"], str(start))
     item.attrib["FileOffsetInSrc"] = str(start)
     size = os.stat(filename).st_size
+    assert item.attrib["SizeInByteInSrc"] == str(size), (item, item.attrib["SizeInByteInSrc"], str(size))
     item.attrib["SizeInByteInSrc"] = str(size)
     sectors = size // 0x200
     if (size % 0x200) != 0:
         sectors += 1
+    assert item.attrib["SizeInSectorInSrc"] == str(sectors), (item, item.attrib["SizeInSectorInSrc"], str(sectors))
     item.attrib["SizeInSectorInSrc"] = str(sectors)
     with mmap_io(filename, 'rb') as rf:
         rlen = encryptsub(key, rf, wf)
@@ -523,15 +528,19 @@ def copyitem(item, directory, pos, wf):
         filename = item.attrib["filename"]
     if filename == "":
         return item, pos
+    print(f'Copying {filename} @ pos={pos}')
     filename = os.path.join(directory, filename)
     start = pos // 0x200
+    assert item.attrib["FileOffsetInSrc"] == str(start), (item, item.attrib["FileOffsetInSrc"], str(start))
     item.attrib["FileOffsetInSrc"] = str(start)
 
     size = os.stat(filename).st_size
+    assert item.attrib["SizeInByteInSrc"] == str(size), (item, item.attrib["SizeInByteInSrc"], str(size))
     item.attrib["SizeInByteInSrc"] = str(size)
     sectors = size // 0x200
     if (size % 0x200) != 0:
         sectors += 1
+    assert item.attrib["SizeInSectorInSrc"] == str(sectors), (item, item.attrib["SizeInSectorInSrc"], str(sectors))
     item.attrib["SizeInSectorInSrc"] = str(sectors)
     with mmap_io(filename, 'rb') as rf:
         rlen = copysub(rf, wf, 0, size)
@@ -553,24 +562,24 @@ def main():
             path = filename[:filename.rfind("/")]
         else:
             path = ""
-        path = os.path.join(path, "extract")
+        path = os.path.join(path, args["--extractdir"])
         if os.path.exists(path):
             shutil.rmtree(path)
             os.mkdir(path)
         else:
             os.mkdir(path)
         mbox = mbox5
-        xml = extractxml(filename, key)
+        xml = extractxml(filename, key, path)
         if xml is not None:
             print("MBox5")
         else:
             mbox = mbox6
-            xml = extractxml(filename, key)
+            xml = extractxml(filename, key, path)
             if xml is not None:
                 print("MBox6")
             else:
                 mbox = mbox4
-                xml = extractxml(filename, key)
+                xml = extractxml(filename, key, path)
                 if xml is not None:
                     print("MBox4")
                 else:
@@ -648,7 +657,13 @@ def main():
         firmware = None
         if os.path.exists(outfilename):
             os.remove(outfilename)
+        mt = hashlib.md5()
         with open(outfilename, 'wb') as wf:
+            orig_write = wf.write
+            def new_write(data):
+                mt.update(data)
+                return orig_write(data)
+            wf.write = new_write
             pos = 0
             for child in root:
                 if child.tag == "BasicInfo":
@@ -707,14 +722,11 @@ def main():
                 hdr += bytes(firmware, 'utf-8')
                 hdr += b"\x00" * (0x200 - len(hdr))
                 wf.write(hdr)
-                with open(outfilename, 'rb') as rt:
-                    with open("md5sum_pack.md5", 'wb') as wt:
-                        mt = hashlib.md5()
-                        mt.update(rt.read())
-                        wt.write(bytes(mt.hexdigest(), 'utf-8') + b" " + bytes(os.path.basename(outfilename), 'utf-8'))
-                print("Done. Created " + outfilename)
             except Exception as e:
                 print(e)
+        with open("md5sum_pack.md5", 'wb') as wt:
+            wt.write(bytes(mt.hexdigest(), 'utf-8') + b"  " + bytes(os.path.basename(outfilename), 'utf-8') + b"\n")
+        print("Done. Created " + outfilename)
         exit(0)
     elif args["encryptfile"]:
         filename = args["<filename>"].replace("\\", "/")
