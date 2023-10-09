@@ -493,24 +493,32 @@ def copyfile(filename, path, wfilename, start, length):
 
 def encryptitem(key, item, directory, pos, wf):
     try:
-        filename = item.attrib["Path"]
-    except:
-        filename = item.attrib["filename"]
+        filename = item.attrib.get("Path", item.attrib.get("filename", ""))
+    except KeyError:
+        filename = ""
+
     if filename == "":
         return item, pos
+    
     print(f'Encrypting {filename}, pos={pos}')
     filename = os.path.join(directory, filename)
-    start = pos // 0x200
-    assert item.attrib["FileOffsetInSrc"] == str(start), (item, item.attrib["FileOffsetInSrc"], str(start))
+
+    start = int(item.attrib.get("FileOffsetInSrc", pos // 0x200))
+    assert start == pos // 0x200, (item, start, pos // 0x200)
     item.attrib["FileOffsetInSrc"] = str(start)
+    
     size = os.stat(filename).st_size
-    assert item.attrib["SizeInByteInSrc"] == str(size), (item, item.attrib["SizeInByteInSrc"], str(size))
+    size_in_byte_in_src = item.attrib.get("SizeInByteInSrc", str(size))
+    assert size_in_byte_in_src == str(size), (item, size_in_byte_in_src, str(size))
     item.attrib["SizeInByteInSrc"] = str(size)
+
     sectors = size // 0x200
     if (size % 0x200) != 0:
         sectors += 1
-    assert item.attrib["SizeInSectorInSrc"] == str(sectors), (item, item.attrib["SizeInSectorInSrc"], str(sectors))
+    size_in_sector_in_src = item.attrib.get("SizeInSectorInSrc", str(sectors))
+    assert size_in_sector_in_src == str(sectors), (item, size_in_sector_in_src, str(sectors))
     item.attrib["SizeInSectorInSrc"] = str(sectors)
+
     with mmap_io(filename, 'rb') as rf:
         rlen = encryptsub(key, rf, wf)
         pos += rlen
@@ -518,30 +526,39 @@ def encryptitem(key, item, directory, pos, wf):
             sublen = 0x200 - (rlen % 0x200)
             wf.write(b'\x00' * sublen)
             pos += sublen
+    
     return item, pos
+
 
 
 def copyitem(item, directory, pos, wf):
     try:
-        filename = item.attrib["Path"]
-    except:
-        filename = item.attrib["filename"]
+        filename = item.attrib.get("Path", item.attrib.get("filename", ""))
+    except KeyError:
+        filename = ""
+
     if filename == "":
         return item, pos
+
     print(f'Copying {filename} @ pos={pos}')
     filename = os.path.join(directory, filename)
-    start = pos // 0x200
-    assert item.attrib["FileOffsetInSrc"] == str(start), (item, item.attrib["FileOffsetInSrc"], str(start))
+
+    start = int(item.attrib.get("FileOffsetInSrc", pos // 0x200))
+    assert start == pos // 0x200, (item, start, pos // 0x200)
     item.attrib["FileOffsetInSrc"] = str(start)
 
     size = os.stat(filename).st_size
-    assert item.attrib["SizeInByteInSrc"] == str(size), (item, item.attrib["SizeInByteInSrc"], str(size))
+    size_in_byte_in_src = item.attrib.get("SizeInByteInSrc", str(size))
+    assert size_in_byte_in_src == str(size), (item, size_in_byte_in_src, str(size))
     item.attrib["SizeInByteInSrc"] = str(size)
+
     sectors = size // 0x200
     if (size % 0x200) != 0:
         sectors += 1
-    assert item.attrib["SizeInSectorInSrc"] == str(sectors), (item, item.attrib["SizeInSectorInSrc"], str(sectors))
+    size_in_sector_in_src = item.attrib.get("SizeInSectorInSrc", str(sectors))
+    assert size_in_sector_in_src == str(sectors), (item, size_in_sector_in_src, str(sectors))
     item.attrib["SizeInSectorInSrc"] = str(sectors)
+
     with mmap_io(filename, 'rb') as rf:
         rlen = copysub(rf, wf, 0, size)
         pos += rlen
@@ -549,6 +566,7 @@ def copyitem(item, directory, pos, wf):
             sublen = 0x200 - (rlen % 0x200)
             wf.write(b'\x00' * sublen)
             pos += sublen
+
     return item, pos
 
 
