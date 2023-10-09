@@ -666,7 +666,7 @@ def main():
         elif args["--mbox"] == "6":
             mbox = mbox6
         directory = args["<directory>"].replace("\\", "/")
-        settings = os.path.join(directory, "settings.xml")
+        settings = os.path.join(directory, "Setting.xml")
         # root = ET.fromstring(settings)
         tree = ET.parse(settings)
         root = tree.getroot()
