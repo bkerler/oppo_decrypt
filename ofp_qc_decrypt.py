@@ -2,7 +2,7 @@
 # (c) B.Kerler 2018-2021, MIT license
 import os
 import sys
-import xml.etree.ElementTree as ET
+from lxml import etree
 import zipfile
 from struct import unpack
 from binascii import unhexlify, hexlify
@@ -303,7 +303,7 @@ def main():
         print("Unknown key. Aborting")
         exit(0)
     else:
-        xml=data[:data.rfind(b">")+1].decode('utf-8')
+        xml=data[:data.rfind(b">")+1].decode('latin-1')
 
     if "/" in filename:
         path = filename[:filename.rfind("/")]
@@ -325,7 +325,8 @@ def main():
     file_handle.write(xml)
     file_handle.close()
     
-    root = ET.fromstring(xml)
+    parser = etree.XMLParser(recover=True)
+    root = etree.fromstring(xml, parser=parser)
     for child in root:
         for item in child:
             if "Path" not in item.attrib and "filename" not in item.attrib:
